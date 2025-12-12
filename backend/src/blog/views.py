@@ -1,52 +1,53 @@
-from rest_framework import viewsets, permissions, filters
-from rest_framework.decorators import action
+﻿from django.shortcuts import render
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
-from .models import Post, Comment, Like
-from .serializers import PostSerializer, CommentSerializer, LikeSerializer
+from .models import Post
+from django.contrib.auth.models import User
+import json
 
 
-class PostViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.all()
-    serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['author', 'published_at']
-    search_fields = ['title', 'content', 'author__username']
-    ordering_fields = ['created_at', 'published_at', 'title']
-    ordering = ['-created_at']
-
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
-
-    @action(detail=True, methods=['post'])
-    def like(self, request, pk=None):
-        post = self.get_object()
-        like, created = Like.objects.get_or_create(
-            post=post,
-            user=request.user
+@api_view(['GET'])
+def post_list(request):
+    # Создаем тестовые данные если их нет
+    if not Post.objects.exists():
+        user, _ = User.objects.get_or_create(
+            username='admin',
+            defaults={'email': 'admin@example.com'}
         )
+        if user.check_password('admin123') == False:
+            user.set_password('admin123')
+            user.save()
 
-        if not created:
-            like.delete()
-            return Response({'status': 'unliked'})
-        return Response({'status': 'liked'})
+        Post.objects.create(title='First Post', content='Hello World!', author=user)
+        Post.objects.create(title='React + Django', content='Full stack blog', author=user)
+        Post.objects.create(title='Test Post', content='Testing API', author=user)
 
-
-class CommentViewSet(viewsets.ModelViewSet):
-    queryset = Comment.objects.all()
-    serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+    posts = list(Post.objects.all().values(
+        'id', 'title', 'content', 'author__username', 'created_at'
+    ))
+    return Response(posts)  # Возвращаем МАССИВ
 
 
-class LikeViewSet(viewsets.ModelViewSet):
-    queryset = Like.objects.all()
-    serializer_class = LikeSerializer
-    permission_classes = [permissions.IsAuthenticated]
+@api_view(['POST'])
+def create_post(request):
+    data = json.loads(request.body)
+    user = User.objects.first()
+    post = Post.objects.create(
+        title=data.get('title'),
+        content=data.get('content'),
+        author=user
+    )
+    return Response({'id': post.id, 'title': post.title})
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+
+@api_view(['GET'])
+def test_api(request):
+    return Response({
+        'status': 'ok',
+        'message': 'API is working',
+        'endpoints': {
+            'posts': '/api/posts/',
+            'create_post': '/api/posts/create/',
+            'admin': '/admin/'
+        }
+    })

@@ -1,41 +1,22 @@
-import axios from "axios";
+const API_BASE = 'http://localhost:8000/api';
 
-const API_URL = "http://localhost:8000/api";
-
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
+export const api = {
+  async getPosts() {
+    const response = await fetch(`${API_BASE}/posts/`);
+    return await response.json();
   },
-});
 
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
+  async createPost(postData) {
+    const response = await fetch(`${API_BASE}/posts/create/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(postData)
+    });
+    return await response.json();
   },
-  (error) => Promise.reject(error)
-);
 
-export const blogApi = {
-  getPosts: (params) => api.get("/blog/posts/", { params }),
-  getPost: (id) => api.get(`/blog/posts/${id}/`),
-  createPost: (data) => api.post("/blog/posts/", data),
-  updatePost: (id, data) => api.put(`/blog/posts/${id}/`, data),
-  deletePost: (id) => api.delete(`/blog/posts/${id}/`),
-  likePost: (id) => api.post(`/blog/posts/${id}/like/`),
-  
-  getComments: (postId) => api.get(`/blog/comments/?post=${postId}`),
-  createComment: (data) => api.post("/blog/comments/", data),
+  async testConnection() {
+    const response = await fetch(`${API_BASE}/test/`);
+    return await response.json();
+  }
 };
-
-export const authApi = {
-  login: (credentials) => api.post("/token/", credentials),
-  refresh: (refresh) => api.post("/token/refresh/", { refresh }),
-  getProfile: () => api.get("/auth/profile/"),
-};
-
-export default api;
