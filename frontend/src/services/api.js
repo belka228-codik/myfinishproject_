@@ -3,7 +3,8 @@ const API_BASE = 'http://localhost:8000/api';
 export const api = {
   async getPosts() {
     const response = await fetch(`${API_BASE}/posts/`);
-    return await response.json();
+    const data = await response.json();
+    return data;
   },
 
   async createPost(postData) {
